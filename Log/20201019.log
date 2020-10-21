@@ -1,0 +1,49 @@
+2020-10-19 11:05:50,835 - DrsuSSH - INFO - 建立ssh连接，主机：172.18.10.220，端口：22, 账号：broadxt， 密码：broadxt333, drsuid:820020021 
+2020-10-19 11:05:51,339 - OperatorShell - WARNING - 连接172.18.10.220成功
+2020-10-19 11:05:52,617 - OperatorShell - DEBUG - 输入命令：mv drsu_16388 drsu_820020021,回显结果：Welcome to Ubuntu 18.04.4 LTS (GNU/Linux 4.9.140-tegra aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+This system has been minimized by removing packages and content that are
+not required on a system that users do not log into.
+
+To restore this content, you can run the 'unminimize' command.
+
+303 packages can be updated.
+231 updates are security updates.
+
+New release '20.04.1 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+Last login: Mon Oct 19 11:00:44 2020 from 172.16.4.89
+mv drsu_16388 drsu_820020021
+broadxt@broadxt:~$ mv drsu_16388 drsu_820020021
+mv: cannot stat 'drsu_16388': No such file or directory
+broadxt@broadxt:~$ 
+2020-10-19 11:07:05,650 - DrsuSSH - INFO - 建立ssh连接，主机：172.18.10.220，端口：22, 账号：broadxt， 密码：broadxt333, drsuid:820020021 
+2020-10-19 11:07:06,072 - OperatorShell - WARNING - 连接172.18.10.220成功
+2020-10-19 11:07:07,129 - OperatorShell - DEBUG - 输入命令：cd /dr,回显结果：Welcome to Ubuntu 18.04.4 LTS (GNU/Linux 4.9.140-tegra aarch64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+This system has been minimized by removing packages and content that are
+not required on a system that users do not log into.
+
+To restore this content, you can run the 'unminimize' command.
+
+303 packages can be updated.
+231 updates are security updates.
+
+New release '20.04.1 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+Last login: Mon Oct 19 11:05:51 2020 from 172.16.4.89
+cd /dr
+broadxt@broadxt:~$ cd /dr
+broadxt@broadxt:/dr$ 
+2020-10-19 11:07:07,330 - OperatorShell - DEBUG - 输入命令：mv drsu_16388 drsu_820020021,回显结果：mv drsu_16388 drsu_820020021
+broadxt@broadxt:/dr$ 
