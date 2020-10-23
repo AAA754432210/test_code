@@ -5,13 +5,12 @@
 @Author  : 王白熊
 @Data    ： 2020/10/21 11:35
 """
-
-import cv2
 import time
 from numpy import *
 from PIL import Image
 from common.Log import Logger
 import os
+# import pyinstaller
 
 logger = Logger('YUYVtoRGB').getlog()
 screenLevels = 255.0
@@ -57,27 +56,33 @@ def check_dir(dir):
     return str(dir)
 
 
-def _yuyv_to_jpeg():
+def _yuyv_to_jpeg(file_dir, width=1920, height=1080):
     from argparse import ArgumentParser
     start_time = time.time()
-    arg_parser = ArgumentParser()
-    arg_parser.add_argument('file_dir', help='the path of yuv.')
-    arg_parser.add_argument('width', default=1920, type=int, help='the width of picture.')
-    arg_parser.add_argument('height', default=1080, type=int, help='the width of picture.')
-    args = arg_parser.parse_args()
-    file_dir, width, height = args.file_dir, args.width, args.height
+    # arg_parser = ArgumentParser()
+    # arg_parser.add_argument('file_dir', help='the path of yuv.')
+    # arg_parser.add_argument('width', default=1920, type=int, help='the width of picture.')
+    # arg_parser.add_argument('height', default=1080, type=int, help='the width of picture.')
+    # args = arg_parser.parse_args()
+    # file_dir, width, height = args.file_dir, args.width, args.height
+    dest_dir = file_dir + '/dest/'
+    check_dir(dest_dir)
+    sizeall = os.path.getsize(file_dir)
     for dir, folder, file in os.walk(file_dir):
         # 遍历单个文件
         for i in file:
+            size1 = os.path.getsize(file_dir + '/' + i)
             rgb_bytes = yuyv_to_rgb(file_dir + '/' + i, height, width, 16)
             img = Image.frombytes("RGB", (width, height), bytes(rgb_bytes))
-            dest_dir = file_dir + '/dest/' + i + '.jpg'
-            check_dir(dest_dir)
-            img.save(dest_dir + '/' + i + '.jpg', "JPEG", quality=95)
-            logger.info('保存图片：%s' % i + 'dest.jpg')
+            file_path = dest_dir + '/' + i + '.jpg'
+            img.save(file_path, "JPEG", quality=95)
+            size2 = os.path.getsize(file_path)
+            logger.info('保存图片：%s' % i + '.jpg')
+            logger.info('size1:%u,size2:%u,%0.2f' % (size1, size2, size1/size2))
     end_time = time.time()
-    print('\n>> cost : ' + str(end_time - start_time) + ' s')
-
+    logger.info('\n>> cost : ' + str(end_time - start_time) + ' s')
+    sizeall2 = os.path.getsize(dest_dir)
+    logger.info('size1:%u,size2:%u,%0.2f' % (sizeall, sizeall2, sizeall/sizeall2))
 
 if __name__ == '__main__':
-    _yuyv_to_jpeg()
+    _yuyv_to_jpeg('/home/broadxt/picture_1/300001')
