@@ -103,7 +103,7 @@ class DrsuSSHConnection(BaseCommand):
         # if not os.path.exists(self.drsu.log_file):
         #     logger.debug('log文件:%s不存在' % self.drsu.log_file)
         #     return False
-        return self.exec_command_retstr('cat ' + self.drsu.log_file + ' | grep ' + key)
+        return self.exec_command_retstr('cat /dr/drsu_' + self._drsu_id + '/DR_APP/log.txt' + ' | grep -a ' + key)
 
     # 远程杀drsu进程
     def remote_kill(self):
@@ -160,7 +160,8 @@ class DrsuSSHConnection(BaseCommand):
 
     # 远程启动drsu
     def remote_start_drsu(self):
-        self.remote_replace_drc_ip()
+        if self._drc_id != '0':
+            self.remote_replace_drc_ip()
         if self._is_sim:
             thread_02 = Thread(target=self.remote_start_drc_sim)
             # 启动线程02
@@ -298,9 +299,9 @@ class DrsuSSHConnection(BaseCommand):
         if cur_drc_id != drc_id:
             ret_bool = self.replace_str(file_dir, cur_drc_id, drc_id, is_replace_all=False, is_replace_id=True)
             if ret_bool:
-                logger.info('drc_id地址修改成功')
+                logger.info('drc_id修改成功')
             else:
-                logger.info('drc_id地址修改失败')
+                logger.info('drc_id修改失败')
             return ret_bool
         else:
             logger.debug('drc_id无需修改')
@@ -343,30 +344,6 @@ class DrsuSSHConnection(BaseCommand):
         command = 'sudo chown -R broadxt:broadxt *'
         self.remote_shell_sudo(command)
 
-    # 修改配置文件, 參數radar為是否安裝了毫米級雷達
-    def chmod_cfg(self, drsu_id, radar=True):
-        command = 'cd /dr/drsu_16388/config/bootup'
-        command1 = 'cp drsu_common_config_127.json drsu_common_config.json'
-        command2 = 'cp drsu_common_config_SIT.json drsu_common_config.json'
-        # 如果是虚拟机环境，则将
-        self.send_command(command)
-        # 如果是虚拟机环境，直接用drsu_common_config_127.json文件数据就行
-        if self._is_sim:
-            self.send_command(command1)
-        # 如果需要注册到真实drc环境，则使用drsu_common_config_SIT.json，并且修改部分配置
-        else:
-            self.send_command(command2)
-            self.remote_replace_drsu_id(drsu_id)
-        if not radar:
-            command3 = 'cp drsu_common_device_noradarpower.json drsu_common_device.json'
-            self.send_command(command3)
-
-    def chmod_cfg_not_sim(self):
-        command = 'cd /dr/drsu_16388/config/bootup'
-        command1 = 'cp drsu_common_config_SIT.json drsu_common_config.json'
-        self.send_command(command)
-        self.send_command(command1)
-
     # 修改rc.local文件
     def chmod_rc(self):
         command1 = 'cat /etc/rc.local'
@@ -385,8 +362,76 @@ class DrsuSSHConnection(BaseCommand):
 
     # 获取factory.bootup.img中的版本信息，用于测试版本升级
     def get_update_version(self):
-        command = 'cat /dr/drsu_16388/bin/update.bootup.img'
+
+        command = 'cat /dr/drsu_' + self._drsu_file_name + '/bin/update.bootup.img'
         version = self.exec_command_retstr(command).split()[1].split('/')[-1]
         logger.info('update.bootup.img中的版本为：%s' % version)
         return version
 
+    # 修改配置文件drsu_common_config
+    def mod_drsu_cfg(self, config_file):
+        dest_file = '/dr/drsu_{}/config/bootup/drsu_common_config.json'.format(self._drsu_id)
+        src_file = '/dr/drsu_{}/config/bootup/{}'.format(self._drsu_id, config_file)
+        if self.cp(src_file, dest_file, force=True):
+            logger.info('drsu:%s 替换drsu_common_config.json' % self._drsu_id)
+        else:
+            logger.info('drsu:%s 替换drsu_common_config.json 失败' % self._drsu_id)
+
+    # 备份配置文件drsu_common_config
+    def bk_drsu_cfg(self, config_file, force):
+        src_file = '/dr/drsu_{}/config/bootup/drsu_common_config.json'.format(self._drsu_id)
+        dest_file = '/dr/drsu_{}/config/bootup/{}'.format(self._drsu_id, config_file)
+        if self.cp(src_file, dest_file, force=force):
+            logger.info('drsu:%s 备份drsu_common_config.json' % self._drsu_id)
+        else:
+            logger.info('drsu:%s 备份drsu_common_config.json 失败' % self._drsu_id)
+
+    # 修改配置文件 drsu_common_para.
+    def mod_drsu_para(self, para_file):
+        dest_file = '/dr/drsu_{}/config/bootup/drsu_common_para.json'.format(self._drsu_id)
+        src_file = '/dr/drsu_{}/config/bootup/{}'.format(self._drsu_id, para_file)
+        if self.cp(src_file, dest_file, force=True):
+            logger.info('drsu:%s drsu_common_para.json' % self._drsu_id)
+        else:
+            logger.info('drsu:%s drsu_common_para.json 失败' % self._drsu_id)
+
+    # 备份配置文件 drsu_common_para.
+    def bk_drsu_para(self, para_file, force):
+        src_file = '/dr/drsu_{}/config/bootup/drsu_common_para.json'.format(self._drsu_id)
+        dest_file = '/dr/drsu_{}/config/bootup/{}'.format(self._drsu_id, para_file)
+        if self.cp(src_file, dest_file, force=force):
+            logger.info('drsu:%s 备份drsu_common_para.json' % self._drsu_id)
+        else:
+            logger.info('drsu:%s 备份drsu_common_para.json 失败' % self._drsu_id)
+
+    def bk_cfg(self, para_file=None, config_file=None, force=False):
+        para_file = para_file if para_file else self.drsu.para_file
+        config_file = config_file if config_file else self.drsu.config_file
+        self.bk_drsu_para(para_file, force)
+        self.bk_drsu_cfg(config_file, force)
+
+    # 修改配置文件, 參數radar為是否安裝了毫米級雷達
+    def chmod_cfg(self, radar=False):
+        # 如果是虚拟机环境，直接用drsu_common_config_127.json文件数据就行
+        if self._is_sim:
+            self.mod_drsu_para(self.drsu.sim_para_file)
+            self.mod_drsu_cfg(self.drsu.sim_config_file)
+        # 如果需要注册到真实drc环境，且区分是否有雷达
+        elif radar:
+            self.mod_drsu_para(self.drsu.radar_para_file)
+            self.mod_drsu_cfg(self.drsu.radar_config_file)
+        # 如果需要注册到真实drc环境，则使用drsu_common_config_test.json，并且修改部分配置
+        else:
+            self.mod_drsu_para(self.drsu.para_file)
+            self.mod_drsu_cfg(self.drsu.config_file)
+
+    def set_update_version(self, version):
+        if self.get_update_version() == version or version is None:
+            return
+        version_file = '/dr/drsu_{}/bin/{}'.format(self._drsu_id, version)
+        if self.is_exist_file(version_file):
+            command = 'md5sum /dr/drsu_{}/bin/{} > update.bootup.img'.format(self._drsu_id, version)
+            self.send_command(command)
+            logger.info('drsu:%s update.bootup.img中的版本更换为：%s' % (self._drsu_id, version))
+        else:
+            logger.warning('指定版本：%s不存在' % version)

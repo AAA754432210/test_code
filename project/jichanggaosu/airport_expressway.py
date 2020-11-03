@@ -13,6 +13,7 @@ from common.Log import Logger
 
 logger = Logger('deploy_drsu_highway').getlog()
 
+
 def deploy_drsu_highway(host, is_sim, remote_path, local_path, drsu_id='16388', ):
     drsuconn = DrsuSSHConnection(drsu_id, host=host, is_sim=is_sim, drc_id='8200')
     # 從遠端服務器拷貝dr壓縮文件到當前設備
@@ -30,7 +31,7 @@ def deploy_drsu_highway(host, is_sim, remote_path, local_path, drsu_id='16388', 
 
     drsuconn.is_sim = False
     drsuconn.chmod_cfg_not_sim()
-    drsuconn.remote_replace_drsu_id('820020021')
+    drsuconn.remote_replace_drsu_id()
     if drsuconn.remote_ps_drsu_process_num() != 0:
         # 如果有残余进程，先杀进程 然后再重新启动
         drsuconn.remote_kill()
@@ -50,7 +51,6 @@ def deploy_drsu_highway(host, is_sim, remote_path, local_path, drsu_id='16388', 
     if not drsuconn.is_drsu_ready():
         logger.error('虚拟drc环境下drsu启动不成功')
         return False
-
 
     drsuconn.close()
 

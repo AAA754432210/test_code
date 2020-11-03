@@ -22,6 +22,19 @@ class BaseCommand(OperatorShell):
         logger.debug('输入命令：%s,\r\n 返回值:%s' % (query_command, ret_str))
         return ret_str
 
+    # 判断文件是否存在
+    def is_exist_file(self, file_path):
+        command = 'ls {} | wc -l'.format(file_path)
+        if int(self.exec_command_retstr(command)) != 0:
+            return True
+        else:
+            return False
+
+    # 获取文件大小
+    def get_file_size(self, file_path):
+        command = "ls -l " + file_path + " | awk '{print $5}'"
+        return int(self.exec_command_retstr(command))
+
     # 修改指定文件指定字符串
     def replace_str(self, file_name, old_str, new_str, is_replace_all=True, is_replace_id=False):
         # 如果查询不到待修改字符串直接返回
@@ -49,7 +62,7 @@ class BaseCommand(OperatorShell):
         logger.info('文件%s中的字符串%s被替换为%s' % (file_name, old_str, new_str))
         return True
 
-    # 执行scp命令
+    # 执行带sudo等需要交互的命令
     def remote_shell_sudo(self, command, remote_password=None):
         self.send_command('pwd')
         remote_password = remote_password if remote_password else self._password
@@ -72,12 +85,34 @@ class BaseCommand(OperatorShell):
 
     # 检查是否拷贝成功 607610540
     def check_scp(self, file_path, size=None):
-        # command = "ls -l /dr/dr.tar.gz | awk '{print $5}'"
-        command = "ls -l " + file_path + " | awk '{print $5}'"
-        str1 = self.exec_command_retstr(command)
-        if not size or size == int(str1):
-            logger.info('拷贝成功,大小：%s' % str1)
+        if not self.is_exist_file(file_path):
+            return False
+        size_ = self.get_file_size(file_path)
+        if not size or size == size_:
+            logger.info('拷贝成功,大小：%s' % size_)
             return True
         else:
-            logger.info('拷贝失败,目标大小：%s,实际大小:%s' % (size, str1))
+            logger.info('拷贝失败,目标大小：%s,实际大小:%s' % (size, size_))
             return False
+
+    def cp(self, src_file, dest_file, force=True, check_size=False, mode=0):
+        if not self.is_exist_file(src_file):
+            logger.info('拷贝失败：源文件：%s不存在' % src_file)
+            return True
+        if not force and self.is_exist_file(dest_file):
+            logger.info('文件：%s已存在，无序拷贝' % dest_file)
+            return True
+        size1 = self.get_file_size(src_file)
+        if mode == 0:
+            action = 'cp'
+        elif mode == 1:
+            action = 'mv'
+        else:
+            logger.info('不支持的文件移动命令')
+            return True
+        command = '{} {} {}'.format(action, src_file, dest_file)
+        self.send_command(command)
+        if check_size:
+            return self.check_scp(dest_file, size1)
+        else:
+            return self.is_exist_file(dest_file)
