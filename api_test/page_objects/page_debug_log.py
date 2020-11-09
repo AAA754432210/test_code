@@ -1,4 +1,4 @@
-from automation_framework_demo.framework.homepage import HomePage
+from automation_framework_demo.api_test.base_page.homepage import HomePage
 from automation_framework_demo.common.Log import Logger
 from selenium.webdriver.support.select import Select
 

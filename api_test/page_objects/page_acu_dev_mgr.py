@@ -1,5 +1,5 @@
 from selenium.webdriver.support.select import Select
-from framework.homepage import HomePage
+from api_test.base_page.homepage import HomePage
 from common.Log import Logger
 
 logger = Logger("AcuDevMgrPage").getlog()
