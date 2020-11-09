@@ -107,12 +107,12 @@ class DrsuSSHConnection(BaseCommand):
 
     # 远程杀drsu进程
     def remote_kill(self):
-        str_ps = "ps -aux | grep \"./DR_APP/monitor_dr.sh /dr/drsu_" + self._drsu_file_name + "\" | grep -v grep | head -1 | awk -F ' ' '{logger.debugf $2}'"
+        str_ps = "ps -aux | grep \"./DR_APP/monitor_dr.sh /dr/drsu_" + self._drsu_file_name + "\" | grep -v grep | head -1 | awk '{print $2}'"
         process_id_str = self.exec_command_retstr(str_ps)
         str_kill = "kill -9 " + process_id_str
         logger.debug(str_kill)
         self.exec_command_retstr(str_kill)
-        str_ps = "ps -aux | grep /dr/drsu_" + self._drsu_file_name + "/DR_APP/dr_drsu | grep -v grep | head -1 | awk -F ' ' '{logger.debugf $2}'"
+        str_ps = "ps -aux | grep /dr/drsu_" + self._drsu_file_name + "/DR_APP/dr_drsu | grep -v grep | head -1 | awk '{print $2}'"
         process_id_str = self.exec_command_retstr(str_ps)
         str_kill = "kill -9 " + process_id_str
         logger.debug(str_kill)
@@ -202,6 +202,9 @@ class DrsuSSHConnection(BaseCommand):
 
     # 判断drsu是否成功启动并收集数据 是否到READY状态，是否有传感器数据，是否有障碍物信息
     def is_drsu_ready(self):
+        if self.remote_ps_drsu_process_num() == 1:
+            logger.info('未找到drsu进程')
+            return False
         if not self.remote_sleep_log_read_grep_key('CTRL_STATE_READY'):
             logger.info('drsu:%s未进入到READY状态' % self._drsu_id)
             return False
@@ -435,3 +438,15 @@ class DrsuSSHConnection(BaseCommand):
             logger.info('drsu:%s update.bootup.img中的版本更换为：%s' % (self._drsu_id, version))
         else:
             logger.warning('指定版本：%s不存在' % version)
+
+
+if __name__ == '__main__':
+    drsuconn = DrsuSSHConnection('12345', True, 0)
+    if drsuconn.remote_ps_drsu_process_num() != 0:
+        # 如果有残余进程，先杀进程 然后再重新启动
+        drsuconn.remote_kill()
+        time.sleep(5)
+    drsuconn.remote_start_drsu()
+    time.sleep(230)
+    if not drsuconn.is_drsu_ready():
+        logger.error('虚拟drc环境下drsu启动不成功')
