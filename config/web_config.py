@@ -34,10 +34,12 @@ class Web_Config(Config):
 
     @property
     def url(self):
+        print('get url')
         return self.get_value('testServer', 'url')
 
     def __getattr__(self, item):
         try:
+            print('get_wth')
             return self.get_value('testServer', item)
         except:
             logger.warning('没有在web_config.ini配置文件中找到%s元素' % item)
@@ -45,5 +47,5 @@ class Web_Config(Config):
 
 if __name__ == '__main__':
     A = Web_Config()
-    print(A.username)
+    print(A.url)
     print(A.asd)
