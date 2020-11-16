@@ -37,10 +37,38 @@ class TrackDrsu(object):
         # 障碍物类型可能出现跳变,所以取众数
         self.obj_type = self.df['stObj_type'].mode()[0]
         self.obj_dict = pd.value_counts(self.df.stObj_type).to_dict()
-        logger.debug('trackid:%s,obj_type:%s' % (self.track_id,self.obj_dict))
+        logger.debug('trackid:%s,obj_type:%s' % (self.track_id, self.obj_dict))
         self.dict_track_info = pd.Series()
         self._file_name = file_drsu
         # 判断轨迹类型，采用方差法判断轨迹是否是静止, 返回值0：代表是静止状态，1代表是直线运动状态
+
+    # 将两个trackid合并在一起
+    def __add__(self, others):
+        if self.track_info['track_type'] != 0:
+            logger.warning('暂时只支持静态track融合')
+            return self
+        # trackid小的读取为df1
+        if int(self.track_id) < int(others.track_id):
+            df1 = round(self.df, 1)
+            df2 = round(others.df, 1)
+        else:
+            df2 = round(self.df, 1)
+            df1 = round(others.df, 1)
+        x1 = self.df['stCenter.dbx'].mode()[0]
+        x2 = others.df['stCenter.dbx'].mode()[0]
+        if abs(x1-x2) > 1:
+            logger.error('两个今天轨迹坐标差值大于1无法合并')
+            return None
+        # 去除偏差大于0.5的值
+        df1 = df1.loc[abs(df1['stCenter.dbx'] - x1) < 0.5]
+        df2 = df2.loc[abs(df2['stCenter.dbx'] - x2) < 0.5]
+        df1 = df1.loc[df1['dbTimestamp'] < df2.iloc[0].dbTimestamp]
+        df1 = df1.append(df2, ignore_index=True)
+        # 保存在与obs_data_trackid目录同级的位置
+        save_name = os.path.join(os.path.dirname(os.path.dirname(self._file_name)),
+                                 str(self.track_id) + '_'+ str(others.track_id) + 'fused.csv')
+        df1.to_csv(save_name)
+        return TrackDrsu(save_name)
 
     def is_track_type_static_by_center(self):
         var_x = self.df['stCenter.dbx'].var()
@@ -82,7 +110,7 @@ class TrackDrsu(object):
         # 摄像头方向位移方向位移距离超过10
         if x[0] > 20:
             if abs((90 if y[1] == 0 else math.atan(x[1] / y[1]) * const.ANGEL_VER_VALUE) -
-                                        (90 if y[2] == 0 else math.atan(x[2] / y[2]) * const.ANGEL_VER_VALUE)) < \
+                   (90 if y[2] == 0 else math.atan(x[2] / y[2]) * const.ANGEL_VER_VALUE)) < \
                     const.ANGEL_THRESHOLD:
                 # 夹角小于20度判定为车辆沿着摄像头方向直行
                 return const.TRACK_STRAIGHT
@@ -91,7 +119,7 @@ class TrackDrsu(object):
                 return const.TRACK_UNDEFINED
         if y[0] > 10:
             if abs((90 if y[1] == 0 else math.atan(x[1] / y[1]) * const.ANGEL_VER_VALUE) -
-                                        (90 if y[2] == 0 else math.atan(x[2] / y[2]) * const.ANGEL_VER_VALUE)) < \
+                   (90 if y[2] == 0 else math.atan(x[2] / y[2]) * const.ANGEL_VER_VALUE)) < \
                     const.ANGEL_THRESHOLD:
                 # 夹角小于20度判定为车辆沿着摄像头垂直方向直行
                 return const.TRACK_STRAIGHT_VERTICAL
@@ -159,17 +187,6 @@ class TrackDrsu(object):
         perr = np.sqrt(np.diag(pcov))
         r_square = self.check_fit_we(popt)
         return popt, r_square
-
-    # 静止物体删除异常值
-    def drop_outliers_static(self):
-        x = self.df['stCenter.dbx'].mode()[0]
-        df = self.df.loc[(abs(self.df['stCenter.dbx'] - x) < const.CENTER_THRESHOLD_Y)]
-        df = df.reset_index()
-        frame_num = df.shape[0]  # 帧数
-        frame_no = [int(df.ulFrame[0]), int(df.ulFrame[frame_num - 1])]
-        tho_num = frame_no[1] - frame_no[0]
-        obj_dict = pd.value_counts(df.stObj_type).to_dict()
-        return [df['stCenter.dbx'].mean(), df['stCenter.dby'].mean(), tho_num, frame_num, obj_dict]
 
     # 单个track_id画轨迹图
     def draw_track_straight(self, ax):

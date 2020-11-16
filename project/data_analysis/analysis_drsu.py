@@ -159,6 +159,19 @@ class DrsuScene(object):
     def check_main_track_id_straight(self):
         pass
 
+    # 暂时只支持两个track合并,合并两个track的特征用于整体分析图
+    def merge_track_static(self):
+        if self.bk_df.shape[0] < 2:
+            logger.warning('track数量小于2，无需融合')
+            return
+        if self.bk_df.shape[0] > 2:
+            logger.warning('不支持两个以上的track合并')
+            return
+        pf1 = TrackDrsu(self.bk_df.iloc[0].file_name)
+        pf2 = TrackDrsu(self.bk_df.iloc[1].file_name)
+        pf_new = pf1+pf2
+        return pf_new.calc_track_info()
+
     def find_main_track_id_static(self):
         self.get_track_by_track_type(const.TRACK_STATIC)
         # 搜索范围和 drsu横杆与acu相距距离成正比
@@ -328,10 +341,11 @@ class DrsuScene(object):
 
 
 if __name__ == '__main__':
-    # drsu_file = r'D:\data\drsu03场景\group1\group1_position22'
-    # drsu_file = r'D:\data\drsu_staright\group1\speed10_uniform_02'
-    drsu_file = r'D:\data\drsu_data\3\22'
+    drsu_file = r'D:\data\drsu03场景\group1\group1_position02'
+    # drsu_file = r'D:\data\drsu_staright\group1\speed10_uniform_01'
+    # drsu_file = r'D:\data\drsu_data\01\22'
     a = DrsuScene(drsu_file)
     a.find_main_track_id()
     a.check_main_track_id()
+    a.merge_track_static()
     a.draw()
