@@ -10,9 +10,55 @@ import os
 from glob import glob
 import pandas as pd
 import matplotlib.pyplot as plt
+import logging
+import time
+import sys
+
+# from common.Log import Logger
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
+
+
+def create_file(filename):
+    path = filename[0:filename.rfind('/')]
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    if not os.path.isfile(filename):
+        fd = open(filename, mode='w', encoding='utf-8')
+        fd.close()
+    else:
+        pass
+
+
+class Logger(object):
+    def __init__(self, logger_name):
+        self.logger = logging.getLogger(logger_name)
+        self.logger.setLevel(logging.DEBUG)
+        path = os.path.dirname(os.path.abspath(__file__))
+        rq = time.strftime('%Y%m%d', time.localtime(time.time()))
+        log_file = path + rq + '.log'
+        create_file(log_file)
+
+        # 定制输出格式
+        formatter = logging.Formatter('%(levelname)s - %(message)s')
+
+        handler = logging.FileHandler(log_file, encoding='utf-8', mode='a+')  # 输出到log文件
+        handler.setLevel(logging.DEBUG)
+        handler.setFormatter(formatter)
+
+        ch = logging.StreamHandler(sys.stdout)  # 输出到控制台
+        ch.setLevel(logging.INFO)
+        ch.setFormatter(formatter)
+
+        self.logger.addHandler(handler)
+        self.logger.addHandler(ch)
+
+    def getlog(self):
+        return self.logger
+
+
+logger = Logger('reference').getlog()
 
 
 def read_reference_single(json_file):
@@ -31,9 +77,40 @@ def read_reference(file_dir):
     reference_data = pd.DataFrame()
     files = glob(os.path.join(file_dir, '*.json'))
     row_num = 0
+    logger.info('异常类型一: fx,fy大于5000，任意std(%)值小于1\r\n'
+                '异常类型二: fx,fy大于7000，fy_std(%)或fx_std(%)值小于1\r\n'
+                '异常类型二: fx,fy大于7000，cx_std(%)或cy_std(%)值小于1')
     for i in files:
         data_list = read_reference_single(i)
-        reference_data.loc[row_num, 'num'] = int(os.path.basename(i).split('.')[0])
+        num = int(os.path.basename(i).split('.')[0])
+        reference_data.loc[row_num, 'num'] = num
+        if data_list['fx'] < 5000 and data_list['fy'] < 5000:
+            if data_list['segma_fx']['std(%)'] > 1 or \
+                    data_list['segma_fy']['std(%)'] > 1 or \
+                    data_list['segma_cx']['std(%)'] > 1 or \
+                    data_list['segma_cy']['std(%)'] > 1:
+                logger.error('序号{}内参数据异常，异常类型: 一， 具体参数：\r\n fx:{},fy:{},cx:{},cy:{},fy_std(%):{},fx_std(%):{},cx_std(%):{},cy_std(%):{},'
+                               .format(num, data_list['fx'], data_list['fy'], data_list['cx'], data_list['cx'], data_list['cy'],
+                                       data_list['segma_fx']['std(%)'], data_list['segma_fy']['std(%)'], data_list['segma_cx']['std(%)'],
+                                       data_list['segma_cy']['std(%)']))
+        elif data_list['fx'] > 7000 and data_list['fy'] > 7000:
+            if data_list['segma_fx']['std(%)'] > 1 or \
+                    data_list['segma_fy']['std(%)'] > 1:
+                logger.error(
+                    '序号{}内参数据异常，异常类型: 二， 具体参数：\r\n fx:{},fy:{},cx:{},cy:{},fy_std(%):{},fx_std(%):{},cx_std(%):{},cy_std(%):{},'
+                    .format(num, data_list['fx'], data_list['fy'], data_list['cx'], data_list['cx'], data_list['cy'],
+                            data_list['segma_fx']['std(%)'], data_list['segma_fy']['std(%)'],
+                            data_list['segma_cx']['std(%)'],
+                            data_list['segma_cy']['std(%)']))
+            elif data_list['segma_cx']['std(%)'] > 1 or \
+                    data_list['segma_cy']['std(%)'] > 1:
+                logger.warning(
+                    '序号{}内参数据异常，异常类型: 三， 具体参数：\r\n fx:{},fy:{},cx:{},cy:{},fy_std(%):{},fx_std(%):{},cx_std(%):{},cy_std(%):{},'
+                    .format(num, data_list['fx'], data_list['fy'], data_list['cx'], data_list['cx'], data_list['cy'],
+                            data_list['segma_fx']['std(%)'], data_list['segma_fy']['std(%)'],
+                            data_list['segma_cx']['std(%)'],
+                            data_list['segma_cy']['std(%)']))
+
         reference_data.loc[row_num, 'fx'] = data_list['fx']
         reference_data.loc[row_num, 'fy'] = data_list['fy']
         reference_data.loc[row_num, 'cx'] = data_list['cx']
@@ -82,7 +159,8 @@ def draw(draw_file, is_show=True):
         ax.scatter(pf.iloc[:, 0], pf.iloc[:, i], c=Listcolors[i % 7])
         ver = pf.iloc[:, i].mean()
         print(ver)
-        ax.plot(pf.iloc[:, 0], [ver for _ in range(pf.shape[0])], c=Listcolors[i % 7 + 1], linewidth=0.5, linestyle='--')
+        ax.plot(pf.iloc[:, 0], [ver for _ in range(pf.shape[0])], c=Listcolors[i % 7 + 1], linewidth=0.5,
+                linestyle='--')
         ax.set_xticks(pf.iloc[:, 0].to_list())
     file_save = os.path.join(os.path.dirname(draw_file), os.path.basename(draw_file).split('.')[0] + '1')
     plt.savefig(file_save)
@@ -106,8 +184,9 @@ def draw1(draw_file, is_show=True):
         ax = fig.add_subplot(3, 3, i)
         ax.set(title=pf.columns[i + 8], )
         ax.scatter(pf.iloc[:, 0], pf.iloc[:, 8 + i], c=Listcolors[i % 7])
-        ver = pf.iloc[:, 8+i].mean()
-        ax.plot(pf.iloc[:, 0], [ver for _ in range(pf.shape[0])], c=Listcolors[i % 7 + 1], linewidth=0.5, linestyle='--')
+        ver = pf.iloc[:, 8 + i].mean()
+        ax.plot(pf.iloc[:, 0], [ver for _ in range(pf.shape[0])], c=Listcolors[i % 7 + 1], linewidth=0.5,
+                linestyle='--')
         ax.set_xticks(pf.iloc[:, 0].to_list())
     file_save = os.path.join(os.path.dirname(draw_file), os.path.basename(draw_file).split('.')[0] + '2')
     plt.savefig(file_save)

@@ -18,10 +18,8 @@ import glob
 import os
 import matplotlib.pyplot as plt
 
-
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
-
 
 logger = Logger('TrackDrsu').getlog()
 
@@ -39,9 +37,11 @@ class TrackDrsu(object):
         # 障碍物类型可能出现跳变,所以取众数
         self.obj_type = self.df['stObj_type'].mode()[0]
         self.obj_dict = pd.value_counts(self.df.stObj_type).to_dict()
+        logger.debug('trackid:%s,obj_type:%s' % (self.track_id,self.obj_dict))
         self.dict_track_info = pd.Series()
-
+        self._file_name = file_drsu
         # 判断轨迹类型，采用方差法判断轨迹是否是静止, 返回值0：代表是静止状态，1代表是直线运动状态
+
     def is_track_type_static_by_center(self):
         var_x = self.df['stCenter.dbx'].var()
         var_y = self.df['stCenter.dbx'].var()
@@ -56,7 +56,8 @@ class TrackDrsu(object):
         var_x = self.df['stvelocity.dbx'].var()
         var_y = self.df['stvelocity.dbx'].var()
         logger.debug('速度方差，x:%s，y:%s' % (var_x, var_y))
-        if var_x < const.VARIANCE_VELOCITY and var_y < const.VARIANCE_VELOCITY and self.df['stvelocity.dbx'].mode()[0] == 0:
+        if var_x < const.VARIANCE_VELOCITY and var_y < const.VARIANCE_VELOCITY and self.df['stvelocity.dbx'].mode()[
+            0] == 0:
             return True
         else:
             return False
@@ -80,16 +81,18 @@ class TrackDrsu(object):
         # 判断处于一条直线的方法为,起点和中点的连线 和中点和终点的连线夹角小于20度
         # 摄像头方向位移方向位移距离超过10
         if x[0] > 20:
-            if abs(math.atan(x[1] / y[1]) * const.ANGEL_VER_VALUE - math.atan(
-                    x[2] / y[2]) * const.ANGEL_VER_VALUE) < const.ANGEL_THRESHOLD:
+            if abs((90 if y[1] == 0 else math.atan(x[1] / y[1]) * const.ANGEL_VER_VALUE) -
+                                        (90 if y[2] == 0 else math.atan(x[2] / y[2]) * const.ANGEL_VER_VALUE)) < \
+                    const.ANGEL_THRESHOLD:
                 # 夹角小于20度判定为车辆沿着摄像头方向直行
                 return const.TRACK_STRAIGHT
             else:
                 # 夹角大于20度判定为非直行
                 return const.TRACK_UNDEFINED
         if y[0] > 10:
-            if abs(math.atan(x[1] / y[1]) * const.ANGEL_VER_VALUE - math.atan(
-                    x[2] / y[2]) * const.ANGEL_VER_VALUE) < const.ANGEL_THRESHOLD:
+            if abs((90 if y[1] == 0 else math.atan(x[1] / y[1]) * const.ANGEL_VER_VALUE) -
+                                        (90 if y[2] == 0 else math.atan(x[2] / y[2]) * const.ANGEL_VER_VALUE)) < \
+                    const.ANGEL_THRESHOLD:
                 # 夹角小于20度判定为车辆沿着摄像头垂直方向直行
                 return const.TRACK_STRAIGHT_VERTICAL
             else:
@@ -141,12 +144,17 @@ class TrackDrsu(object):
         egression = sum((y_prd - series_x.mean()) ** 2)  # r回归平方和
         residual = sum((series_y - y_prd) ** 2)  # 残差平方和
         total = sum((series_y - series_y.mean()) ** 2)  # 总体平方和
-        r_square = 1 - residual / total  # 相关性系数R^2
-        logger.info('对track_id:%s 轨迹进行拟合，拟合参数:%s,拟合优度：%s' % (self.track_id, popt, r_square))
+        if total == 0:
+            r_square = 1
+        else:
+            r_square = 1 - residual / total  # 相关性系数R^2
+        logger.debug('对track_id:%s 轨迹进行拟合，拟合参数:%s,拟合优度：%s' % (self.track_id, popt, r_square))
         return r_square
 
     # 利用curve_fit 函数获取拟合参数 以及判断拟合优度,返回值为参数及标准方差
     def check_stright_fit(self):
+        if self.dict_track_info['track_type'] == const.TRACK_STATIC:
+            return [0, 0], 0
         popt, pcov = optimize.curve_fit(target_func, self.df['stCenter.dbx'], self.df['stCenter.dby'])
         perr = np.sqrt(np.diag(pcov))
         r_square = self.check_fit_we(popt)
@@ -186,13 +194,14 @@ class TrackDrsu(object):
         track_info['speed_x'] = self.df['stvelocity.dbx'].mean()
         track_info['speed_y'] = self.df['stvelocity.dby'].mean()
         track_info['frame_num'] = self.df.shape[0]
+        track_info['file_name'] = self._file_name
         popt, r_square = self.check_stright_fit()
         # y = ax+b
         track_info['a'] = popt[0]
         track_info['b'] = popt[1]
         track_info['r_square'] = r_square
+        # logger.debug('单个处理结果：%s'% track_info)
         return track_info
-
 
     @property
     def track_info(self):
@@ -203,6 +212,7 @@ class TrackDrsu(object):
         # # 小于10帧的数据直接丢弃
         # if self.frame_num <= 10:
         #     return None
+
 
 # 用来显示单个场景下，非静止物体不同拟合优度的轨迹图
 def wth_test():
@@ -217,11 +227,11 @@ def wth_test():
     ax7 = fig.add_subplot(337)
     ax8 = fig.add_subplot(338)
     ax9 = fig.add_subplot(339)
-    ax1.set(title='0.98',)
+    ax1.set(title='0.98', )
     ax2.set(title='0.95', )
     ax3.set(title='0.92', )
     ax4.set(title='0.88', )
-    ax5.set(title='0.82',)
+    ax5.set(title='0.82', )
     ax6.set(title='0.74', )
     ax7.set(title='0.62', )
     ax8.set(title='0.50', )
@@ -254,10 +264,12 @@ def wth_test():
     plt.savefig(r'D:\data\test_wth.png')
     plt.show()
 
+
 def wth_test1():
     file_dir = r'D:\data\drsu_staright\group1\speed10_uniform_01\obs_data_trackid\10.csv'
     track = TrackDrsu(file_dir)
     print(track.track_info)
+
 
 if __name__ == '__main__':
     wth_test1()

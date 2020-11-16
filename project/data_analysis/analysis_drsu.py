@@ -21,22 +21,20 @@ plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
 
 Listcolors = ['red', 'blue', 'green', 'cyan', 'magenta', 'orange', 'darkred', 'black']
 
-logger = Logger('DrsuScence').getlog()
+logger = Logger('DrsuScene').getlog()
 
 
 # drsu 场景，由多个track_id组成
-class DrsuScence(object):
-    def __init__(self, file_path, acu_file, ort=True):
+class DrsuScene(object):
+    def __init__(self, file_path,  ort=True):
         """
         :param file_path: drsu路径，到obs_data_trackid这一层
         :param ort:摄像机朝向是否为x方向
         """
         if not os.path.exists(file_path):
             raise FileNotFoundError('drsu数据文件夹:%s不存在' % file_path)
-        if not os.path.exists(acu_file):
-            raise FileNotFoundError('acu数据文件:%s不存在' % acu_file)
-        self.drsu_path = file_path
-        self.acu_track = TrackAcu(acu_file, ort=ort)
+        self.data_path = file_path
+        self.acu_track = TrackAcu(os.path.join(file_path, 'acu_data'), ort=ort)
         self._ort = ort
         self.df = DataFrame()
         self.bk_df = DataFrame()
@@ -46,12 +44,14 @@ class DrsuScence(object):
         self.obj_jump = 1
         self.fig = None
         self.ax = [None] * 9
+        logger.info('对文件夹{}进行分析'.format(file_path))
 
     # 获取场景下所有trackid的特征DataFrame
     def get_drsu_data(self):
-        files = glob(os.path.join(self.drsu_path, '*.csv'))
+        drsu_path = os.path.join(self.data_path, 'obs_data_trackid')
+        files = glob(os.path.join(drsu_path, '*.csv'))
         if not files:
-            logger.error('文件夹：%s中不存在csv文件' % self.drsu_path)
+            logger.error('文件夹：%s中不存在csv文件' % drsu_path)
             exit(0)
         for i in files:
             # 文件记录小于10条的认为无效数据直接丢弃
@@ -60,7 +60,7 @@ class DrsuScence(object):
             track = TrackDrsu(i)
             # 遍历获取track_id的特征信息,并全部放入一个DataFrame中
             track_info = track.track_info
-            track_info['file_name'] = [i]
+            # track_info['file_name'] = i
             self.df = self.df.append(track_info, ignore_index=True)
             self.bk_df = self.df
 
@@ -106,12 +106,14 @@ class DrsuScence(object):
             logger.info('障碍物类型匹配成功')
             self.bk_df = bk_df_
             self.match_list[0] = const.MATCH_TYPE_MAIN
+            return
         bk_df_ = self.bk_df.loc[self.bk_df.obj_type == bk_obj_type]
         if not bk_df_.empty:
             logger.info('障碍物类型（相似类型）匹配成功')
             self.bk_df = bk_df_
             self.match_list[0] = const.MATCH_TYPE_BACK_UP
-        logger.info('障碍物类型（相似类型）匹配失败')
+            return
+        logger.info('障碍物类型匹配失败')
 
     # 用体积对track进行筛选
     def get_track_by_obj_volume(self, volume=const.VOLUME_CAR):
@@ -150,8 +152,8 @@ class DrsuScence(object):
     def check_main_track_id_static(self):
         if self.bk_df.shape[0] > 2:
             logger.warning('存在大于两个满足条件的track_id存在,增加判断')
-        if int(abs(self.bk_df.loc[0, :].center_x - self.bk_df.loc[1, :].center_x)) > 2 or \
-                int(abs(self.bk_df.loc[0, :].center_y - self.bk_df.loc[1, :].center_y)) > 2:
+        if int(abs(self.bk_df.iloc[0, :].center_x - self.bk_df.iloc[1, :].center_x)) > 2 or \
+                int(abs(self.bk_df.iloc[0, :].center_y - self.bk_df.iloc[1, :].center_y)) > 2:
             logger.warning('同在两个满足条件的track_id，且坐标相差巨大，判定不是相同障碍物，请增加判断')
 
     def check_main_track_id_straight(self):
@@ -161,8 +163,8 @@ class DrsuScence(object):
         self.get_track_by_track_type(const.TRACK_STATIC)
         # 搜索范围和 drsu横杆与acu相距距离成正比
         distance = [
-            (self.acu_track.center - const.CENTER_DRSU_3[0]) * const.SEARCH_DISTANCE_RATE + const.BASE_SEARCH_DISTANCE,
-            (self.acu_track.center - const.CENTER_DRSU_3[0]) * const.SEARCH_DISTANCE_RATE + const.BASE_SEARCH_DISTANCE]
+            (self.acu_track.center[0] - const.CENTER_DRSU_3[0]) * const.SEARCH_DISTANCE_RATE + const.BASE_SEARCH_DISTANCE,
+            (self.acu_track.center[1] - const.CENTER_DRSU_3[1]) * const.SEARCH_DISTANCE_RATE + const.BASE_SEARCH_DISTANCE]
         self.get_track_by_center(self.acu_track.center, distance)
         self.get_track_by_obj_type(const.OBJ_TYPE_BUS, const.OBJ_TYPE_CAR)
         # 只有在类型识别正确的情况下保留认为是跳变，保留多个track
@@ -192,10 +194,13 @@ class DrsuScence(object):
     def find_main_track_id(self):
         if self.df.empty:
             self.get_drsu_data()
+
         if self.acu_track.track_type == const.TRACK_STATIC:
+            logger.info('场景类型为静止')
             # 先寻找轨迹类型为静止
             self.find_main_track_id_static()
         elif self.acu_track.track_type == const.TRACK_STRAIGHT:
+            logger.info('场景类型为运动，速度：%s' % self.acu_track.speed)
             self.find_main_track_id_straight()
 
     # 检查目标轨迹
@@ -204,51 +209,84 @@ class DrsuScence(object):
         if self.bk_df.shape[0] == 1:
             return
         if self.match_list[0] != const.MATCH_TYPE_MAIN:
-            self.bk_df = self.bk_df.iloc[0, :]
+            self.bk_df = self.bk_df.head(1)
             return
         if self.acu_track.track_type == const.TRACK_STATIC:
             self.check_main_track_id_static()
         elif self.acu_track.track_type == const.TRACK_STRAIGHT:
             self.check_main_track_id_straight()
 
-    def draw_static_sub(self, is_show=False):
+    def draw_static_sub(self):
+        start_time = self.bk_df.start_time.min()
         for i in range(self.bk_df.shape[0]):
             df = round(pd.read_csv(self.bk_df.iloc[i].file_name), 1)
-            df['Timestamp'] = (df['dbTimestamp'] - df.iloc[0, :].dbTimestamp) * 10
-            time_stamp = df['Timestamp'][df.shape[0]]
+            df['Timestamp'] = (df['dbTimestamp'] * 10 - start_time)
+            time_stamp = int(df['Timestamp'][df.shape[0]-1])
             track_id = self.bk_df.iloc[i].track_id
             count_dict = [2, 1, 2, 1]
             dict_x = [df.Timestamp, df.Timestamp, df.Timestamp, np.arange(time_stamp)]
             dict_y = [[abs(df['stCenter.dbx'] - self.acu_track.center[0]),
                        abs(df['stCenter.dby'] - self.acu_track.center[1])],
                       [df.stObj_type],
-                      [df.dbwidth * df.dbheight, [const.VOLUME_BUS for _ in range(drsu_data.shape[0])]],
+                      [df.dbwidth * df.dbheight, [const.VOLUME_BUS for _ in range(df.shape[0])]],
                       [[1 if i in df.Timestamp else 0 for i in range(time_stamp)]]]
             dict_x_ticks = [None, None, None, np.arange(0, time_stamp + 100, 100)]
-            dict_y_ticks = [None, np.arange(3, 11), None, [1, 2]]
+            dict_y_ticks = [None, np.arange(3, 11), None, [0, 1]]
             dict_label = [['纵向位置偏差track_id:{}'.format(track_id), '横向位置偏差track_id:{}'.format(track_id)],
                           ['障碍物类型'],
                           ['障碍物面积(与摄像头方向正视面)', '小巴车实际面积'],
-                          ]
-            for i in range(4):
-                self.ax[i].plot(dict_x[i], dict_y[i][0], Listcolors[i], label=dict_label[i][0])
-                self.ax[i].set_xticks(dict_x_ticks[i])
-                self.ax[i].set_yticks(dict_y_ticks[i])
-                if count_dict[i] > 1:
-                    self.ax[i].plot(dict_x[i], dict_y[i][1], Listcolors[i], label=dict_label[i][1])
-                self.ax[i].legend(loc='best', borderaxespad=0)
+                          ['障碍物数据帧分布']]
+            for j in range(4):
+                self.ax[j].plot(dict_x[j], dict_y[j][0], Listcolors[(i+j)%8], label=dict_label[j][0])
+                if dict_x_ticks[j] is not None:
+                    self.ax[j].set_xticks(dict_x_ticks[j])
+                if dict_y_ticks[j] is not None:
+                    self.ax[j].set_yticks(dict_y_ticks[j])
+                if count_dict[j] > 1:
+                    self.ax[j].plot(dict_x[j], dict_y[j][1], Listcolors[(i+j+3)%8], label=dict_label[j][1])
+                self.ax[j].legend(loc='best', borderaxespad=0)
+
+    def draw_straight_sub(self):
+        start_time = self.bk_df.start_time.min()
+        for i in range(self.bk_df.shape[0]):
+            df = round(pd.read_csv(self.bk_df.iloc[i].file_name), 1)
+            df['Timestamp'] = (df['dbTimestamp'] * 10 - start_time)
+            time_stamp = int(df['Timestamp'][df.shape[0]-1])
+            track_id = self.bk_df.iloc[i].track_id
+            count_dict = [2, 1, 2, 1]
+            dict_x = [[df['stCenter.dbx'], self.acu_track.x],
+                      [df.Timestamp],
+                      [df.Timestamp, df.Timestamp],
+                      [np.arange(time_stamp)]]
+            dict_y = [[df['stCenter.dby'],  self.acu_track.y],
+                      [df.stObj_type],
+                      [df.dbwidth * df.dbheight, [const.VOLUME_BUS for _ in range(df.shape[0])]],
+                      [[1 if i in df.Timestamp else 0 for i in range(time_stamp)]]]
+            dict_x_ticks = [None, None, None, np.arange(0, time_stamp + 100, 100)]
+            dict_y_ticks = [None, np.arange(3, 11), None, [0, 1]]
+            dict_label = [['识别轨迹'.format(track_id), '实际轨迹'],
+                          ['障碍物类型'],
+                          ['障碍物面积(与摄像头方向正视面)', '小巴车实际面积'],
+                          ['障碍物数据帧分布']]
+            for j in range(4):
+                self.ax[j].plot(dict_x[j][0], dict_y[j][0], Listcolors[(i+j)%8], label=dict_label[j][0])
+                if dict_x_ticks[j] is not None:
+                    self.ax[j].set_xticks(dict_x_ticks[j])
+                if dict_y_ticks[j] is not None:
+                    self.ax[j].set_yticks(dict_y_ticks[j])
+                if count_dict[j] > 1:
+                    self.ax[j].plot(dict_x[j][1], dict_y[j][1], Listcolors[(i+j+3)%8], label=dict_label[j][1])
+                self.ax[j].legend(loc='best', borderaxespad=0)
 
     def draw_static(self, is_show=False):
-        image_path = os.path.dirname(self.drsu_path)
-        title = ''.join(self.drsu_path.split('\\')[-2:-1])
-        image_name = os.path.join(image_path, title + 'parsed.png')
-        print(image_name)
-        dict_title = ['纵/横向偏差图', '识别类型变化图', '障碍物面积变化图', '有效帧占比图']
-        dict_y_label = ['acu实际与识别坐标偏差(m)', '障碍物识别类型', '障碍物识别面积(平米)', '障碍物识别有效帧']
+        title = ''.join(self.data_path.split('\\')[-1])
+        image_name = os.path.join(self.data_path, title + 'static.png')
+        list_title = ['纵/横向偏差图', '识别类型变化图', '障碍物面积变化图', '有效帧占比图']
+        list_y_label = ['acu实际与识别坐标偏差(m)', '障碍物识别类型', '障碍物识别面积(平米)', '障碍物识别有效帧']
         self.fig = plt.figure(figsize=(18, 10))
-        for i in range(4):
+        for i in range(len(list_title)):
             ax = self.fig.add_subplot(2, 2, i + 1)
-            ax.set(title=dict_title[i], ylabel=dict_y_label[i], )
+            ax.set(title=list_title[i], ylabel=list_y_label[i], )
             self.ax[i] = ax
         self.draw_static_sub()
         plt.savefig(image_name)
@@ -259,10 +297,41 @@ class DrsuScence(object):
         self.fig = None
         self.ax = [None] * 9
 
+    def draw_straight(self, is_show=False):
+        title = ''.join(self.data_path.split('\\')[-1])
+        image_name = os.path.join(self.data_path, title + 'straight.png')
+        list_title = ['识别轨迹与实际轨迹图', '识别类型变化图', '障碍物面积变化图', '有效帧占比图']
+        list_y_label = ['utm_y坐标', '障碍物识别类型', '障碍物识别面积(平米)', '障碍物识别有效帧']
+        list_x_label = ['utm_x坐标', None, None, None]
+        self.fig = plt.figure(figsize=(18, 10))
+        for i in range(len(list_title)):
+            ax = self.fig.add_subplot(2, 2, i + 1)
+            ax.set(title=list_title[i], ylabel=list_y_label[i], xlabel=list_x_label[i])
+            self.ax[i] = ax
+        self.draw_straight_sub()
+        plt.savefig(image_name)
+        if is_show:
+            plt.show()
+            plt.pause(0.1)
+        plt.close()
+        self.fig = None
+        self.ax = [None] * 9
+
+    def draw(self):
+        if self.acu_track.track_type == const.TRACK_STATIC:
+            self.draw_static()
+        elif self.acu_track.track_type == const.TRACK_STRAIGHT:
+            self.draw_straight()
+        else:
+            pass
+
+
+
 if __name__ == '__main__':
-    drsu_file = r'D:\data\drsu03场景\group1\group1_position01\obs_data_trackid'
-    acu_file = r'D:\data\drsu03场景\group1\group1_position01\static_parsed.csv'
-    a = DrsuScence(drsu_file, acu_file)
+    # drsu_file = r'D:\data\drsu03场景\group1\group1_position22'
+    # drsu_file = r'D:\data\drsu_staright\group1\speed10_uniform_02'
+    drsu_file = r'D:\data\drsu_data\3\22'
+    a = DrsuScene(drsu_file)
     a.find_main_track_id()
     a.check_main_track_id()
-    a.draw_static()
+    a.draw()

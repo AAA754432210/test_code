@@ -32,40 +32,52 @@ class TrackAcu(object):
     # ort表示道路是否为x方向
     def __init__(self, file_path, ort=True):
         if not os.path.exists(file_path):
-            raise FileNotFoundError('acu数据文件:%s不存在' % file_path)
-        self.acu_file = file_path
-        self._ort = ort
-        self.acu_data = self.get_acu_data()
-        if self.acu_data.empty:
-            raise FileNotFoundError('acu文件:{}数据不正确'.format(file_path))
-        self._x = self.acu_data.coordinate_x
-        self._y = self.acu_data.coordinate_y
-        self._t = self.acu_data.time_stamp
-        self._vx = self.acu_data.speed_x
-        self._vy = self.acu_data.speed_y
-        self.track_type = self.get_track_type()
-        self._center = [self._x.mean(), self._y.mean()]
+            self.track_type = 0
+            index = int(os.path.dirname(file_path)[-2:])
+            self.center = const.CENTER_ACU[index - 1]
+            # raise FileNotFoundError('acu数据文件:%s不存在' % file_path)
+        else:
+            self.acu_file = file_path
+            self._ort = ort
+            self.acu_data = self.get_acu_data()
+            if self.acu_data.empty:
+                raise FileNotFoundError('acu文件:{}数据不正确'.format(file_path))
+            self.x = self.acu_data.coordinate_x
+            self.y = self.acu_data.coordinate_y
+            self._t = self.acu_data.time_stamp
+            self._vx = self.acu_data.speed_x
+            self._vy = self.acu_data.speed_y
+            self.track_type = self.get_track_type()
+            self.center = [self.x.mean(), self.y.mean()]
 
     def get_acu_data(self):
-        if not re.search(r'parsed.csv', os.path.basename(self.acu_file)):
-            return self.read_acu_ori_data()
+        data_list = glob.glob(os.path.join(self.acu_file, '*'))
+        parsed_list = glob.glob(os.path.join(self.acu_file, '*parsed.csv'))
+        if not data_list:
+            raise FileNotFoundError('acu数据文件:%s不存在' % file_path)
+        if parsed_list:
+            acu_data = pd.read_csv(parsed_list[0])
+            acu_data = acu_data.loc[(acu_data.coordinate_x > const.CENTER_DRSU_3[0]) & (
+                        acu_data.coordinate_x < (const.CENTER_DRSU_3[0] + 250))]
+            return acu_data
         else:
-            return pd.read_csv(self.acu_file)
+            return self.read_acu_ori_data(data_list[0])
 
     # 获取轨迹类型，acu的判断较为简单，只有直行和静止两种，后续场景增加判断
     def get_track_type(self):
-        if self._vx.mean() < 1 and self._vx.mean() < 1:
+        if abs(self._vx.mean()) < 1 and abs(self._vx.mean()) < 1:
             return const.TRACK_STATIC
         else:
             return const.TRACK_STRAIGHT
 
-    def read_acu_ori_data(self, detal_time=const.ACU_DELAY_TIME):
+    @staticmethod
+    def read_acu_ori_data(file_name, detal_time=const.ACU_DELAY_TIME):
         acu_data = pd.DataFrame(
             columns=['time_stamp', 'coordinate_x', 'coordinate_y',
                      'coordinate_z', 'speed_x', 'speed_y',
                      'speed_z'])
 
-        with open(self.acu_file, 'r') as f:  # 命令行带参数
+        with open(file_name, 'r') as f:  # 命令行带参数
             row_num = 0
             for line in f.readlines():
                 line = line.strip('\n')
@@ -103,15 +115,18 @@ class TrackAcu(object):
                     acu_data.loc[row_num, 'speed_y'] = float(tmp_dict['st_line_speed']['y'])
                     acu_data.loc[row_num, 'speed_z'] = float(tmp_dict['st_line_speed']['z'])
 
-        acu_file_parsed = os.path.join(os.path.dirname(self.acu_file), os.path.basename(self.acu_file).split('.')[0] + 'parsed.csv')
+        acu_file_parsed = os.path.join(os.path.dirname(file_name),
+                                       os.path.basename(file_name).split('.')[0] + 'parsed.csv')
         logger.info('acu数据初步处理并保存到文件：%s' % acu_file_parsed)
+        acu_data = acu_data.loc[
+            (acu_data.coordinate_x > const.CENTER_DRSU_3[0]) & (acu_data.coordinate_x < const.CENTER_DRSU_3[0] + 250)]
         acu_data.to_csv(acu_file_parsed, sep=',', index=False, header=True)
         return acu_data
 
     # 计算拟合优度
     def check_fit_we(self, popt):
-        series_x = self._x
-        series_y = self._y
+        series_x = self.x
+        series_y = self.y
         y_prd = pd.Series(list(map(lambda x: popt[0] * x + popt[1], series_x)))
         egression = sum((y_prd - series_x.mean()) ** 2)  # r回归平方和
         residual = sum((series_y - y_prd) ** 2)  # 残差平方和
@@ -122,7 +137,7 @@ class TrackAcu(object):
 
     # 利用curve_fit 函数获取拟合参数 以及判断拟合优度,返回值为参数及标准方差
     def check_stright_fit(self):
-        popt, pcov = optimize.curve_fit(target_func, self._x, self._y)
+        popt, pcov = optimize.curve_fit(target_func, self.x, self.y)
         perr = np.sqrt(np.diag(pcov))
         r_square = self.check_fit_we(popt)
         return popt, r_square
@@ -131,12 +146,9 @@ class TrackAcu(object):
     def speed(self):
         return [self._vx.mean(), self._vy.mean()]
 
-    @property
-    def center(self):
-        return [self._x.mean(), self._y.mean()]
 
 if __name__ == '__main__':
-    files = r'D:\data\drsu_staright\group1\speed10_uniform_01\10kmh_n2f_1parsed.csv'
+    files = r'D:\data\drsu_staright\group1\speed10_uniform_03\acu_data'
     acu_ana = TrackAcu(files)
-        # acu_data = acu_ana.read_acu_ori_data()
-        # logger.info('acu_data:{}'.format(acu_data))
+    # acu_data = acu_ana.read_acu_ori_data()
+    # logger.info('acu_data:{}'.format(acu_data))
