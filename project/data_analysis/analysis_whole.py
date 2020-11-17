@@ -53,7 +53,7 @@ class AnalysisData():
             drsu_scence.draw()
             self.data[self.index].append(drsu_scence)
         # 一组存一个数据
-        # self.save_data()
+        self.save_data()
 
     def analysis_all(self):
         cat_paths = [files for files in glob.glob(self.file_path + "/*") if os.path.isdir(files)]
@@ -88,9 +88,9 @@ class AnalysisData():
 
     def draw(self):
         if self.draw_data[0].iloc[0].track_type == 0:
-            draw_static()
+            self.draw_static()
         elif self.draw_data[0].iloc[0].track_type == 1:
-            draw_straight()
+            self.draw_straight()
         else:
             pass
 

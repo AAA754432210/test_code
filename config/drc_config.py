@@ -8,6 +8,7 @@
 
 from config.base_config import Config
 
+
 class Drc_Config(Config):
     def __init__(self, drc_id, config_file='drc_config.ini'):
         super().__init__(config_file)
