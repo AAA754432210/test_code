@@ -135,8 +135,10 @@ class TrackAcu(object):
         acu_file_parsed = os.path.join(os.path.dirname(file_name),
                                        os.path.basename(file_name).split('.')[0] + 'parsed.csv')
         logger.info('acu数据初步处理并保存到文件：%s' % acu_file_parsed)
-        acu_data = acu_data.loc[
-            (acu_data.coordinate_x > const.CENTER_DRSU_3[0]) & (acu_data.coordinate_x < const.CENTER_DRSU_3[0] + 250)]
+        # acu_data = acu_data.loc[
+        #     (acu_data.coordinate_x > const.CENTER_DRSU_3[0]-30) & (acu_data.coordinate_x < const.CENTER_DRSU_3[0] + 250)]
+        if abs(acu_data['speed_x'].mean()) > 1:
+            acu_data = acu_data.loc[abs(acu_data.speed_x) > 1]
         acu_data.to_csv(acu_file_parsed, sep=',', index=False, header=True)
         return acu_data.reset_index()
 
@@ -165,7 +167,9 @@ class TrackAcu(object):
 
 
 if __name__ == '__main__':
-    files = r'D:\data\drsu_staright\group3\speed30_uniform_06\acu_data'
+    # files = r'D:\data\drsu_staright\group3\speed30_uniform_06\acu_data'
+    files = r'D:\data\data_straight\1\30kmh_由近到远_05\acu_data'
     acu_ana = TrackAcu(files)
+    print(acu_ana.check_stright_fit())
     # acu_data = acu_ana.read_acu_ori_data()
     # logger.info('acu_data:{}'.format(acu_data))

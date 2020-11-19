@@ -72,10 +72,12 @@ const.BASE_SEARCH_SPEED = 1  #
 const.SEARCH_SPEED_RATE = 0.2  # 查找与acu上报数据接近的目标估计 范围值为 acu数组的正负 1+value*rate
 const.VARIANCE_CENTER = 1  # 坐标的方差范围，小于该值认定为静止
 const.VARIANCE_VELOCITY = 1  # 速度的方差范围，小于该值认定为静止
-const.COORDINATE_DIFF = 7  # drsu坐标与acu坐标的差值范围
+const.COORDINATE_DIFF = 7  # drsu坐标与acu坐标的差值范围f
 const.CENTER_DRSU_3 = [234788, 3344684]  # drsu3横杆坐标
 const.CSV_SIZE_MIN = 2048  # csv文件的最小大小，小于该值的视为无效数据不处理
 # drsu3车辆坐标
+const.LOAD_ANGLE = 2.31  # drsu3 道路与utm坐标系x轴夹角为2.31度
+const.LOAD_VALUE = -0.040340432670925463
 const.CENTER_ACU = [(234839.8, 3344678.2), (234857.6, 3344677.8), (234874.2, 3344677.3), (234888.7, 3344676.8),
                     (234900.9, 3344676.5), (234910.4, 3344675.9), (234920.1, 3344675.3), (234930.8, 3344674.8),
                     (234940.6, 3344674.5), (234950.8, 3344673.8), (234960.1, 3344673.4), (234970.2, 3344673.1),

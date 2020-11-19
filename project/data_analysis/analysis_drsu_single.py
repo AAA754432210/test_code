@@ -108,7 +108,7 @@ class TrackDrsu(object):
         # 如果物体在x，y方向上移动距离大于30米，且起始，中间，结束三点基本处于一条直线上，这认定为直行运动
         # 判断处于一条直线的方法为,起点和中点的连线 和中点和终点的连线夹角小于20度
         # 摄像头方向位移方向位移距离超过10
-        if x[0] > 20:
+        if x[0] > 10:
             if abs((90 if y[1] == 0 else math.atan(x[1] / y[1]) * const.ANGEL_VER_VALUE) -
                    (90 if y[2] == 0 else math.atan(x[2] / y[2]) * const.ANGEL_VER_VALUE)) < \
                     const.ANGEL_THRESHOLD:
@@ -117,7 +117,7 @@ class TrackDrsu(object):
             else:
                 # 夹角大于20度判定为非直行
                 return const.TRACK_UNDEFINED
-        if y[0] > 10:
+        if y[0] > 5:
             if abs((90 if y[1] == 0 else math.atan(x[1] / y[1]) * const.ANGEL_VER_VALUE) -
                    (90 if y[2] == 0 else math.atan(x[2] / y[2]) * const.ANGEL_VER_VALUE)) < \
                     const.ANGEL_THRESHOLD:
@@ -217,7 +217,7 @@ class TrackDrsu(object):
         track_info['a'] = popt[0]
         track_info['b'] = popt[1]
         track_info['r_square'] = r_square
-        # logger.debug('单个处理结果：%s'% track_info)
+        logger.debug('单个处理结果：%s' % track_info)
         return track_info
 
     @property
@@ -283,7 +283,7 @@ def wth_test():
 
 
 def wth_test1():
-    file_dir = r'D:\data\drsu_staright\group1\speed10_uniform_01\obs_data_trackid\10.csv'
+    file_dir = r'D:\data\drsu_staright\group1\speed20_uniform_03\obs_data_trackid\98.csv'
     track = TrackDrsu(file_dir)
     print(track.track_info)
 

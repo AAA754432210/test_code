@@ -78,7 +78,7 @@ class AnalysisData():
                 track_info = i.bk_df.iloc[0]
             self.draw_data[self.index] = self.draw_data[self.index].append(track_info, ignore_index=True)
             index += 1
-        self.draw_data[self.index].to_csv(save_name)
+        self.draw_data[self.index].to_csv(save_name, encoding='gbk')
 
     def draw_static(self):
         pass
@@ -96,5 +96,6 @@ class AnalysisData():
 
 
 if __name__ == '__main__':
-    A = AnalysisData(r'D:\data\drsu_staright')
+    # A = AnalysisData(r'D:\data\drsu_staright')
+    A = AnalysisData(r'D:\data\data_straight')
     A.analysis_all()
