@@ -32,8 +32,9 @@ import open3d as o3d
 
 obj=pclpy.pcl.PointCloud.PointXYZI()
 pcl.io.loadPCDFile(r'D:\data\biaoding\origin.pcd', obj)
+# pcl.io.savePCDFileASCII()
 
-viewer=pcl.visualization.PCLVisualizer('Point Cloud viewer')
+viewer = pcl.visualization.PCLVisualizer('Point Cloud viewer')
 viewer.addPointCloud(obj)
 while not viewer.wasStopped():
     viewer.spinOnce(100)

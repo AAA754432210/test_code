@@ -217,6 +217,7 @@ class TrackDrsu(object):
         track_info['a'] = popt[0]
         track_info['b'] = popt[1]
         track_info['r_square'] = r_square
+        track_info['obj_type_rate'] = round((self.obj_dict[const.OBJ_TYPE_BUS] if const.OBJ_TYPE_BUS in self.obj_dict else 0/self.df.shape[0])*100, 2)
         logger.debug('单个处理结果：%s' % track_info)
         return track_info
 

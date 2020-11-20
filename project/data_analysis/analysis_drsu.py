@@ -48,6 +48,8 @@ class DrsuScene(object):
         self.ax = [None] * 9
         self.draw_flag = False
         self.use_time = use_time
+        self.acu_center = [0, 0]
+        self.acu_speed = [0, 0]
         logger.info('对文件夹{}进行分析'.format(file_path))
 
     # 获取场景下所有trackid的特征DataFrame
@@ -289,29 +291,37 @@ class DrsuScene(object):
             df['Timestamp'] = (df['dbTimestamp'] * 10 - start_time)
             time_stamp = int(df['Timestamp'][df.shape[0] - 1])
             # track_id = self.bk_df.iloc[i].track_id
-            # dict_y = [[df['x_incr'], df['y_incr']],
-            #           [df['vx_incr'], df['vy_incr']],
-            #           [df.stObj_type],
-            #           [df.dbwidth * df.dbheight, [const.VOLUME_BUS for _ in range(df.shape[0])]]]
+            dict_x = [df.Timestamp,
+                      df.Timestamp,
+                      df['stCenter.dbx'],
+                      df['stCenter.dbx'],
+                      df['stCenter.dbx'],
+                      df['stCenter.dbx'],
+                      df.Timestamp,
+                      df.Timestamp]
             length = df.shape[0]
             dict_y = [[df['x_acu'], df['stCenter.dbx']],
                       [df['y_acu'], df['stCenter.dby']],
+                      [df['stCenter.dbx']-df['x_acu']],
+                      [df['stCenter.dby'] - df['y_acu']],
                       [df['vx_acu'], df['stvelocity.dbx']],
                       [df['vy_acu'], df['stvelocity.dby']],
                       [df.stObj_type],
                       [df.dbwidth * df.dbheight, [const.VOLUME_BUS for _ in range(df.shape[0])]]
                       ]
-            dict_x_ticks = [None, None, None, None, None, np.arange(0, time_stamp + 100, 100)]
-            dict_y_ticks = [None, None, None, None, np.arange(3, 11), np.arange(0, 10)]
-            dict_label = [['实际纵向坐标', '识别纵向坐标', '+%5偏差', '-%5偏差'],
-                          ['实际横向坐标', '识别横向坐标', '+%5偏差', '-%5偏差'],
-                          ['实际纵向速度', '识别纵向速度', '+%5偏差', '-%5偏差'],
-                          ['实际横向速度', '识别横向速度', '+%5偏差', '-%5偏差'],
+            dict_x_ticks = [None, None, None, None, None, None, None, np.arange(0, time_stamp + 100, 100)]
+            dict_y_ticks = [None, None, None, None, None, None, np.arange(3, 11), np.arange(0, 10)]
+            dict_label = [['实际纵向坐标', '识别纵向坐标'],
+                          ['实际横向坐标', '识别横向坐标'],
+                          ['纵向偏差'],
+                          ['横向偏差'],
+                          ['实际纵向速度', '识别纵向速度'],
+                          ['实际横向速度', '识别横向速度'],
                           ['障碍物类型'],
                           ['障碍物面积(与摄像头方向正视面)', '小巴车实际面积']]
             for j in range(len(dict_y)):
                 for k in range(len(dict_y[j])):
-                    self.ax[j].plot(df.Timestamp, dict_y[j][k], Listcolors[(i + j + k) % 8],
+                    self.ax[j].plot(dict_x[j], dict_y[j][k], Listcolors[(i + j + k) % 8],
                                     linestyle=List_style[k % 4], label=dict_label[j][k])
                     if dict_x_ticks[j] is not None:
                         self.ax[j].set_xticks(dict_x_ticks[j])
@@ -342,17 +352,18 @@ class DrsuScene(object):
         title = ''.join(self.data_path.split('\\')[-1])
         rq = time.strftime('%Y%m%d%H', time.localtime(time.time()))
         image_name = os.path.join(self.data_path, title + rq + 'straight.png')
-        list_title = ['纵向坐标偏差图', '横向坐标偏差图', '纵向速度偏差图', '横向速度偏差图', '识别类型变化图', '障碍物面积变化图']
-        list_y_label = ['纵向坐标', '横向坐标', '纵向速度', '横向速度', '识别类型', '识别面积']
-        self.fig = plt.figure(figsize=(18, 10))
+        list_title = ['纵向坐标图', '横向坐标图', '纵向坐标偏差图', '横向坐标偏差图', '纵向速度偏差图', '横向速度偏差图', '识别类型变化图', '障碍物面积变化图']
+        list_y_label = ['纵向坐标', '横向坐标', '纵向偏差', '横向偏差', '纵向速度', '横向速度', '识别类型', '识别面积']
+        list_x_label = ['时间（100ms）', '时间（100ms）', '距离（m）', '距离（m）', '距离（m）', '距离（m）', '时间（100ms）', '时间（100ms）']
+        self.fig = plt.figure(figsize=(18, 24))
         for i in range(len(list_title)):
-            ax = self.fig.add_subplot(3, 2, i + 1)
-            ax.set(title=list_title[i], ylabel=list_y_label[i])
+            ax = self.fig.add_subplot(4, 2, i + 1)
+            ax.set(title=list_title[i], xlabel=list_x_label[i], ylabel=list_y_label[i])
             self.ax[i] = ax
         self.draw_straight_sub()
         plt.savefig(image_name)
         title1 = ''.join(self.data_path.split('\\')[-2:])
-        plt.savefig('D:\\data\\scene_picture1\\' + title1 + 'straight.png')
+        plt.savefig('D:\\data\\scene_picture2\\' + title1 + 'straight.png')
         if is_show:
             plt.show()
             plt.pause(0.1)
@@ -398,6 +409,8 @@ class DrsuScene(object):
                                                                                   df['stvelocity.dby'], v_flag=True)
         df['x_acu'], df['y_acu'] = coordinate_system_transformation(df['x_acu'], df['y_acu'])
         df['vx_acu'], df['vy_acu'] = coordinate_system_transformation(df['vx_acu'], df['vy_acu'], v_flag=True)
+        self.acu_center = [df['x_acu'].mean(), df['y_acu'].mead()]
+        self.acu_speed = [df['vx_acu'].mean(), df['vy_acu'].mead()]
 
 
 # 穿入两个Series
@@ -413,7 +426,8 @@ if __name__ == '__main__':
     # drsu_file = r'D:\data\drsu03场景\group1\group1_position02'
     # drsu_file = r'D:\data\drsu_staright\group1\speed20_uniform_04'
     # drsu_file = r'D:\data\drsu_data\01\22'
-    drsu_file = r'D:\data\data_straight\2\20kmh_由远到近_04'
+    # drsu_file = r'D:\data\data_straight\2\20kmh_由远到近_04'
+    drsu_file = r'D:\data\data_straight\3\40kmh_由远到近_08'
     a = DrsuScene(drsu_file)
     a.find_main_track_id()
     a.check_main_track_id()
