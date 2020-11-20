@@ -48,8 +48,7 @@ class DrsuScene(object):
         self.ax = [None] * 9
         self.draw_flag = False
         self.use_time = use_time
-        self.acu_center = [0, 0]
-        self.acu_speed = [0, 0]
+        self.draw_data = {}  # 用于在运动的时候画图用
         logger.info('对文件夹{}进行分析'.format(file_path))
 
     # 获取场景下所有trackid的特征DataFrame
@@ -302,7 +301,7 @@ class DrsuScene(object):
             length = df.shape[0]
             dict_y = [[df['x_acu'], df['stCenter.dbx']],
                       [df['y_acu'], df['stCenter.dby']],
-                      [df['stCenter.dbx']-df['x_acu']],
+                      [df['stCenter.dbx'] - df['x_acu']],
                       [df['stCenter.dby'] - df['y_acu']],
                       [df['vx_acu'], df['stvelocity.dbx']],
                       [df['vy_acu'], df['stvelocity.dby']],
@@ -406,11 +405,23 @@ class DrsuScene(object):
         df['stCenter.dbx'], df['stCenter.dby'] = coordinate_system_transformation(df['stCenter.dbx'],
                                                                                   df['stCenter.dby'])
         df['stvelocity.dbx'], df['stvelocity.dby'] = coordinate_system_transformation(df['stvelocity.dbx'],
-                                                                                  df['stvelocity.dby'], v_flag=True)
+                                                                                        df['stvelocity.dby'], v_flag=True)
         df['x_acu'], df['y_acu'] = coordinate_system_transformation(df['x_acu'], df['y_acu'])
         df['vx_acu'], df['vy_acu'] = coordinate_system_transformation(df['vx_acu'], df['vy_acu'], v_flag=True)
-        self.acu_center = [df['x_acu'].mean(), df['y_acu'].mead()]
-        self.acu_speed = [df['vx_acu'].mean(), df['vy_acu'].mead()]
+        self.get_straight_draw_info(df)
+
+    def get_straight_draw_info(self, df):
+        self.draw_data['acu_center_x'] = (df['x_acu']).mean()
+        self.draw_data['acu_center_y'] = (df['y_acu']).mean()
+        self.draw_data['acu_vx'] = (df['vx_acu']).mean()
+        self.draw_data['acu_vy'] = (df['vy_acu']).mean()
+        self.draw_data['drsu_center_x'] = (df['stCenter.dbx']).mean()
+        self.draw_data['drsu_center_y'] = (df['stCenter.dby']).mean()
+        self.draw_data['drsu_vx'] = (df['stvelocity.dbx']).mean()
+        self.draw_data['drsu_vy'] = (df['stvelocity.dby']).mean()
+        self.draw_data['obj_type_rate'] = self.bk_df.iloc[0, :].obj_type_rate
+        self.draw_data['volume'] = self.bk_df.iloc[0, :].volume
+        logger.debug('运动场景画图数据：%s' % self.draw_data)
 
 
 # 穿入两个Series
