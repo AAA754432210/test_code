@@ -411,6 +411,8 @@ class DrsuScene(object):
         self.get_straight_draw_info(df)
 
     def get_straight_draw_info(self, df):
+        # acu数据不全，零时判断
+        df = df[~df.x_acu.isna()]
         self.draw_data['acu_center_x'] = (df['x_acu']).mean()
         self.draw_data['acu_center_y'] = (df['y_acu']).mean()
         self.draw_data['acu_vx'] = (df['vx_acu']).mean()
@@ -438,7 +440,7 @@ if __name__ == '__main__':
     # drsu_file = r'D:\data\drsu_staright\group1\speed20_uniform_04'
     # drsu_file = r'D:\data\drsu_data\01\22'
     # drsu_file = r'D:\data\data_straight\2\20kmh_由远到近_04'
-    drsu_file = r'D:\data\data_straight\3\40kmh_由远到近_08'
+    drsu_file = r'D:\data\data_straight\2\20kmh_由近到远_03'
     a = DrsuScene(drsu_file)
     a.find_main_track_id()
     a.check_main_track_id()

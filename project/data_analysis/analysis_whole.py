@@ -88,7 +88,6 @@ class AnalysisData():
 
     def draw_straight_sub_plt(self, index):
         index_file = 1
-
         for i in range(3):
             file_name = os.path.join(self.file_path, self.rq + str(i) + 'parsed.csv')
             df = pd.read_csv(file_name)
@@ -130,12 +129,15 @@ class AnalysisData():
 
         list_y_label = ['横向坐标偏差均值', '纵向坐标偏差均值', '横向速度偏差均值',
                         '纵向速度偏差均值', '障碍物类型识别正确率(%)', '障碍物识别面积(平米)']
-        list_x_label = ['速度(km/h)', '速度(km/h)', '速度(km/h)', '速度(km/h)', '速度(km/h)', '速度(km/h)', ]
+        list_x_label = [None, None, None, None, '速度(km/h)', '速度(km/h)', ]
         for i in range(2):
             self.fig = plt.figure(figsize=(20, 10))
             for j in range(len(list_title)):
                 ax = self.fig.add_subplot(3, 2, j + 1)
-                ax.set(title=list_title[j], xlabel=list_x_label[j], ylabel=list_y_label[j])
+                if not list_x_label[j]:
+                    ax.set(title=list_title[j], xlabel=list_x_label[j], ylabel=list_y_label[j])
+                else:
+                    ax.set(title=list_title[j], ylabel=list_y_label[j])
                 self.ax[j] = ax
             self.draw_straight_sub_plt(i)
             plt.savefig(os.path.join(self.file_path, self.rq + str(i) + 'straight.png'))
@@ -159,4 +161,4 @@ if __name__ == '__main__':
     # A = AnalysisData(r'D:\data\drsu_staright')
     A = AnalysisData(r'D:\data\data_straight')
     A.analysis_all()
-    A.draw_straight()
+    A.draw_straight(is_show=True)
