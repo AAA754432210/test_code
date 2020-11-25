@@ -98,25 +98,29 @@ class AnalysisData():
                 df = df.loc[(df['acu_vx'] < 0)].sort_values(by='acu_vx', ascending=True).reset_index(drop=True)
             vx = abs(df.acu_vx*3.6)
             dict_x = [vx, vx, vx, vx, vx, vx]
-            dict_y = [[df.acu_center_x - df.drsu_center_x],
-                      [df.acu_center_y - df.drsu_center_y],
-                      [(df.acu_vx - df.drsu_vx)*3.6],
+            dict_y = [[df.acu_center_y - df.drsu_center_y],
+                      [df.acu_center_x - df.drsu_center_x],
                       [(df.acu_vy - df.drsu_vy)*3.6],
+                      [(df.acu_vx - df.drsu_vx)*3.6],
                       [df['obj_type_rate']],
                       [df['volume']]]
             dict_x_ticks = [np.arange(0, 50, 10), np.arange(0, 50, 10), np.arange(0, 50, 10),
                             np.arange(0, 50, 10), np.arange(0, 50, 10), np.arange(0, 50, 10)]
-            dict_y_ticks = [None, None, None, None, np.arange(90, 120, 10), np.arange(0, 10)]
+            dict_y_ticks = [None, None, None, None, np.arange(90, 102, 1), np.arange(0, 10)]
             label_ = '第{}组'.format(index_file)
             for j in range(len(dict_y)):
                 for k in range(len(dict_y[j])):
-                    self.ax[j].plot(dict_x[j], dict_y[j][k], Listcolors[(i + j + k) % 8],
-                                    linestyle=List_style[k % 4], label=label_)
+                    if k == 0:
+                        self.ax[j].plot(dict_x[j], dict_y[j][k], Listcolors[i % 8],
+                                        linestyle=List_style[0], label=label_)
+                    else:
+                        self.ax[j].plot(dict_x[j], dict_y[j][k], Listcolors[i % 8],
+                                        linestyle=List_style[1], label=label_)
                     if dict_x_ticks[j] is not None:
                         self.ax[j].set_xticks(dict_x_ticks[j])
                     if dict_y_ticks[j] is not None:
                         self.ax[j].set_yticks(dict_y_ticks[j])
-                    self.ax[j].legend(loc='best', borderaxespad=0)
+                    self.ax[j].legend(bbox_to_anchor=(0, 1), loc=2, borderaxespad=0)
             index_file += 1
 
     def draw_straight(self, is_show=False):
@@ -127,17 +131,15 @@ class AnalysisData():
                       ['不同速度下drsu障碍物类型识别正确率'],
                       ['不同速度下不同距离drsu识别面积图（宽*高）']]
 
-        list_y_label = ['横向坐标偏差均值', '纵向坐标偏差均值', '横向速度偏差均值',
-                        '纵向速度偏差均值', '障碍物类型识别正确率(%)', '障碍物识别面积(平米)']
+        list_y_label = ['横向坐标偏差均值(m)', '纵向坐标偏差均值(m)', '横向速度偏差均值(km/h)',
+                        '纵向速度偏差均值(km/h)', '障碍物类型识别正确率(%)', '障碍物识别面积(平米)']
         list_x_label = [None, None, None, None, '速度(km/h)', '速度(km/h)', ]
         for i in range(2):
             self.fig = plt.figure(figsize=(20, 10))
             for j in range(len(list_title)):
                 ax = self.fig.add_subplot(3, 2, j + 1)
-                if not list_x_label[j]:
-                    ax.set(title=list_title[j], xlabel=list_x_label[j], ylabel=list_y_label[j])
-                else:
-                    ax.set(title=list_title[j], ylabel=list_y_label[j])
+                #if list_x_label[j] is not None:
+                ax.set(title=list_title[j], xlabel=list_x_label[j], ylabel=list_y_label[j])
                 self.ax[j] = ax
             self.draw_straight_sub_plt(i)
             plt.savefig(os.path.join(self.file_path, self.rq + str(i) + 'straight.png'))
@@ -159,6 +161,6 @@ class AnalysisData():
 
 if __name__ == '__main__':
     # A = AnalysisData(r'D:\data\drsu_staright')
-    A = AnalysisData(r'D:\data\data_straight')
+    A = AnalysisData(r'D:\data\drsu03\data_straight')
     A.analysis_all()
     A.draw_straight(is_show=True)

@@ -46,6 +46,7 @@ const.R_SQUARE_THRESHOLD = 0.1  # 轨迹直线拟合拟合优度允许的差值
 const.CAR_THRESHOLD = 20  # 车辆限速72km/h
 const.CAR_THRESHOLD1 = 5  # 车辆垂直于行进方向的速度
 const.VOLUME_THRESHOLD = 7  # 体积允许的误差
+const.TRACK_NUMBER_IN_ARRAY = 8 #一组数据中轨迹的条数
 
 
 const.MATCH_ALL = 0  # 障碍物符合场景特征
@@ -73,7 +74,7 @@ const.SEARCH_SPEED_RATE = 0.2  # 查找与acu上报数据接近的目标估计 �
 const.VARIANCE_CENTER = 1  # 坐标的方差范围，小于该值认定为静止
 const.VARIANCE_VELOCITY = 1  # 速度的方差范围，小于该值认定为静止
 const.COORDINATE_DIFF = 7  # drsu坐标与acu坐标的差值范围f
-const.CENTER_DRSU_3 = [234788, 3344684]  # drsu3横杆坐标
+const.CENTER_DRSU_3 = [234804, 3344693]  # drsu3横杆坐标
 const.CSV_SIZE_MIN = 2048  # csv文件的最小大小，小于该值的视为无效数据不处理
 # drsu3车辆坐标
 const.LOAD_ANGLE = 2.31  # drsu3 道路与utm坐标系x轴夹角为2.31度

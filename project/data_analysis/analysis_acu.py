@@ -49,7 +49,7 @@ class TrackAcu(object):
         data_list = glob.glob(os.path.join(self.acu_file, '*'))
         parsed_list = glob.glob(os.path.join(self.acu_file, '*parsed.csv'))
         if not data_list:
-            raise FileNotFoundError('acu数据文件:%s不存在' % file_path)
+            raise FileNotFoundError('acu数据文件:%s不存在' % self.acu_file)
         # if parsed_list:
         #     acu_data = pd.read_csv(parsed_list[0])
         #     acu_data = acu_data.loc[(acu_data.coordinate_x > const.CENTER_DRSU_3[0]) & (
@@ -163,7 +163,12 @@ class TrackAcu(object):
 
     @property
     def speed(self):
-        return [self.acu_data.speed_x.mean(), self.acu_data.speed_y.mean()]
+        try:
+            arr_tmp = [self.acu_data.speed_x.mean(), self.acu_data.speed_y.mean()]
+        except:
+            arr_tmp = [0, 0]
+        return arr_tmp
+
 
 
 if __name__ == '__main__':
